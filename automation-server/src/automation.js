@@ -33,9 +33,11 @@ async function runSession(userId, igUsername, igPassword, interests) {
   try {
     console.log(`[${userId}] Logging in as ${igUsername}...`);
     await ig.simulate.preLoginFlow();
-    await ig.account.login(igUsername, igPassword);
+    await sleep(2000);
+    const loggedInUser = await ig.account.login(igUsername, igPassword);
+    await sleep(2000);
     await ig.simulate.postLoginFlow();
-    console.log(`[${userId}] Login successful`);
+    console.log(`[${userId}] Login successful as ${loggedInUser.username}`);
 
     const activeInterests = interests.filter((s) => INTEREST_HASHTAGS[s]);
 
@@ -72,6 +74,9 @@ async function runSession(userId, igUsername, igPassword, interests) {
 
   } catch (err) {
     console.error(`[${userId}] Session error:`, err.message);
+    if (err.name === 'IgCheckpointError') {
+      console.error(`[${userId}] Checkpoint/challenge required — manual verification needed`);
+    }
     return { success: false, error: err.message, actions };
   }
 }
