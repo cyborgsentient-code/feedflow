@@ -70,6 +70,9 @@ async function runSession(userId, igUsername, igPassword, interests) {
     // ── Verify login succeeded ───────────────────────────────────────────────
     const currentUrl = page.url();
     const pageText = await page.textContent("body").catch(() => "");
+    console.log(`[${userId}] Post-login URL: ${currentUrl}`);
+    console.log(`[${userId}] Page snippet: ${pageText.slice(0, 300)}`);
+
     const loginFailed =
       currentUrl.includes("/accounts/login") ||
       currentUrl.includes("/challenge") ||
