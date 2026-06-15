@@ -1,103 +1,42 @@
-const { chromium } = require("playwright");
+const { IgApiClient } = require("instagram-private-api");
 
 // Hashtags mapped to interest slugs
 const INTEREST_HASHTAGS = {
-  technology:   ["technology", "tech", "coding", "programming", "software"],
-  design:       ["design", "uidesign", "uxdesign", "graphicdesign", "creative"],
-  fitness:      ["fitness", "workout", "gym", "health", "training"],
-  food:         ["food", "foodie", "cooking", "recipe", "delicious"],
-  travel:       ["travel", "wanderlust", "adventure", "explore", "trip"],
-  music:        ["music", "musician", "song", "hiphop", "indie"],
-  photography:  ["photography", "photo", "photographer", "portrait", "landscape"],
-  gaming:       ["gaming", "gamer", "videogames", "ps5", "pcgaming"],
-  business:     ["business", "entrepreneur", "startup", "marketing", "success"],
-  art:          ["art", "artist", "artwork", "illustration", "digitalart"],
-  science:      ["science", "research", "physics", "biology", "space"],
-  fashion:      ["fashion", "style", "outfit", "ootd", "streetstyle"],
+  technology:  ["technology", "tech", "coding", "programming", "software"],
+  design:      ["design", "uidesign", "uxdesign", "graphicdesign", "creative"],
+  fitness:     ["fitness", "workout", "gym", "health", "training"],
+  food:        ["food", "foodie", "cooking", "recipe", "delicious"],
+  travel:      ["travel", "wanderlust", "adventure", "explore", "trip"],
+  music:       ["music", "musician", "song", "hiphop", "indie"],
+  photography: ["photography", "photo", "photographer", "portrait", "landscape"],
+  gaming:      ["gaming", "gamer", "videogames", "ps5", "pcgaming"],
+  business:    ["business", "entrepreneur", "startup", "marketing", "success"],
+  art:         ["art", "artist", "artwork", "illustration", "digitalart"],
+  science:     ["science", "research", "physics", "biology", "space"],
+  fashion:     ["fashion", "style", "outfit", "ootd", "streetstyle"],
 };
 
+async function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 /**
- * Run one automation session for a user.
- * Logs into Instagram, searches their interest hashtags,
- * views and likes posts to signal interest to the algorithm.
+ * Run one automation session for a user via Instagram private API.
+ * Logs in, browses hashtag feeds, and likes posts to signal interest.
  */
 async function runSession(userId, igUsername, igPassword, interests) {
-  const browser = await chromium.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-  });
+  const ig = new IgApiClient();
+  ig.state.generateDevice(igUsername);
 
-  const context = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
-    viewport: { width: 390, height: 844 },
-  });
-
-  const page = await context.newPage();
   const actions = [];
 
   try {
-    // ── Login ────────────────────────────────────────────────────────────────
-    console.log(`[${userId}] Navigating to Instagram login...`);
-    await page.goto("https://www.instagram.com/accounts/login/", { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.waitForTimeout(3000);
-    console.log(`[${userId}] Login page loaded: ${page.url()}`);
+    console.log(`[${userId}] Logging in as ${igUsername}...`);
+    await ig.simulate.preLoginFlow();
+    await ig.account.login(igUsername, igPassword);
+    await ig.simulate.postLoginFlow();
+    console.log(`[${userId}] Login successful`);
 
-    // Accept cookies if prompted
-    const cookieBtn = page.locator("text=Allow all cookies").first();
-    if (await cookieBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await cookieBtn.click();
-      await page.waitForTimeout(1000);
-    }
-
-    console.log(`[${userId}] Filling login form...`);
-    try {
-      await page.waitForSelector('input[name="username"]', { timeout: 15000 });
-    } catch (e) {
-      const html = await page.content();
-      console.log(`[${userId}] Username input not found. Page HTML snippet: ${html.slice(0, 500)}`);
-      return { success: false, error: "Login form not found", actions };
-    }
-    await page.fill('input[name="username"]', igUsername);
-    await page.fill('input[name="password"]', igPassword);
-    await page.click('button[type="submit"]');
-    console.log(`[${userId}] Submitted login form, waiting...`);
-    await page.waitForTimeout(5000);
-    console.log(`[${userId}] Post-submit URL: ${page.url()}`);
-
-    // Dismiss "Save login info" dialog if it appears
-    const notNow = page.locator("text=Not now").first();
-    if (await notNow.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await notNow.click();
-      await page.waitForTimeout(1000);
-    }
-
-    // Dismiss notifications dialog if it appears
-    const notNow2 = page.locator("text=Not Now").first();
-    if (await notNow2.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await notNow2.click();
-      await page.waitForTimeout(1000);
-    }
-
-    // ── Verify login succeeded ───────────────────────────────────────────────
-    const currentUrl = page.url();
-    const pageText = await page.textContent("body").catch(() => "");
-    console.log(`[${userId}] Post-login URL: ${currentUrl}`);
-    console.log(`[${userId}] Page snippet: ${pageText.slice(0, 300)}`);
-
-    const loginFailed =
-      currentUrl.includes("/accounts/login") ||
-      currentUrl.includes("/challenge") ||
-      currentUrl.includes("/two_factor") ||
-      pageText.includes("your password was incorrect") ||
-      pageText.includes("verify your identity") ||
-      pageText.includes("suspicious login");
-
-    if (loginFailed) {
-      return { success: false, error: `Login failed. URL: ${currentUrl}`, actions };
-    }
-
-    // ── For each interest, explore hashtag ───────────────────────────────────
     const activeInterests = interests.filter((s) => INTEREST_HASHTAGS[s]);
 
     for (const slug of activeInterests.slice(0, 3)) {
@@ -105,43 +44,26 @@ async function runSession(userId, igUsername, igPassword, interests) {
       const hashtag = hashtags[Math.floor(Math.random() * hashtags.length)];
 
       try {
-        await page.goto(`https://www.instagram.com/explore/tags/${hashtag}/`, {
-          waitUntil: "domcontentloaded",
-          timeout: 15000,
-        });
-        await page.waitForTimeout(2000);
+        console.log(`[${userId}] Exploring #${hashtag} (${slug})...`);
+        const feed = ig.feed.tags(hashtag, "recent");
+        const posts = await feed.items();
 
         actions.push({ type: "search", payload: { topic: slug, tag: hashtag } });
 
-        // Click first post in the grid
-        const posts = page.locator("article a").first();
-        if (await posts.isVisible({ timeout: 5000 }).catch(() => false)) {
-          await posts.click();
-          await page.waitForTimeout(3000);
-
-          actions.push({ type: "view", payload: { topic: slug, tag: hashtag } });
-
-          // Like the post
-          const likeBtn = page.locator('svg[aria-label="Like"]').first();
-          if (await likeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await likeBtn.click();
-            await page.waitForTimeout(1500);
-            actions.push({ type: "like", payload: { topic: slug, tag: hashtag } });
+        // Like up to 2 posts per hashtag
+        for (const post of posts.slice(0, 2)) {
+          if (!post.has_liked) {
+            await ig.media.like({ mediaId: post.id, moduleInfo: { module_name: "hashtag_feed" } });
+            actions.push({ type: "like", payload: { topic: slug, tag: hashtag, mediaId: post.id } });
+            console.log(`[${userId}] Liked post ${post.id} (#${hashtag})`);
+            await sleep(3000 + Math.random() * 2000); // human-like delay
           }
-
-          // Close post
-          const closeBtn = page.locator('svg[aria-label="Close"]').first();
-          if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await closeBtn.click();
-            await page.waitForTimeout(1000);
-          }
+          actions.push({ type: "view", payload: { topic: slug, tag: hashtag, mediaId: post.id } });
         }
 
-        // Scroll to trigger more feed signals
-        await page.evaluate(() => window.scrollBy(0, 600));
-        await page.waitForTimeout(2000);
-
+        await sleep(2000 + Math.random() * 3000);
       } catch (err) {
+        console.error(`[${userId}] Error on #${hashtag}:`, err.message);
         actions.push({ type: "error", payload: { topic: slug, error: err.message } });
       }
     }
@@ -149,9 +71,8 @@ async function runSession(userId, igUsername, igPassword, interests) {
     return { success: true, actions };
 
   } catch (err) {
+    console.error(`[${userId}] Session error:`, err.message);
     return { success: false, error: err.message, actions };
-  } finally {
-    await browser.close();
   }
 }
 
