@@ -1,0 +1,33 @@
+-- Migration: demo mode cron + pg_net invocation schedules
+--
+-- DEMO_MODE: set DEMO_MODE=true in supabase secrets to make the loop
+--   generate 3–5 deterministic actions per user per invocation.
+--
+-- For demo: schedule every 15 seconds using pg_cron + pg_net.
+-- Uncomment ONE block below after deploying the edge function.
+
+-- ── Option A: Normal production schedule (every 15 min) ──────────────────────
+-- SELECT cron.schedule(
+--   'automation-loop-prod',
+--   '*/15 * * * *',
+--   $$ SELECT net.http_post(
+--     url:='<SUPABASE_FUNCTIONS_URL>/automation-loop',
+--     headers:='{"Content-Type":"application/json","Authorization":"Bearer <SERVICE_ROLE_KEY>"}'::jsonb
+--   ) $$
+-- );
+
+-- ── Option B: Demo mode schedule (every 15 seconds via pg_cron workaround) ───
+-- pg_cron minimum granularity is 1 minute; use generate_series to fire 4x/min:
+-- SELECT cron.schedule(
+--   'automation-loop-demo',
+--   '* * * * *',
+--   $$ SELECT net.http_post(
+--     url:='<SUPABASE_FUNCTIONS_URL>/automation-loop?demo=true',
+--     headers:='{"Content-Type":"application/json","Authorization":"Bearer <SERVICE_ROLE_KEY>"}'::jsonb
+--   ) $$
+-- );
+--
+-- For true 15-second intervals during live demo, invoke the function directly
+-- from the app or a simple script:
+--   curl -X POST https://<project>.supabase.co/functions/v1/automation-loop?demo=true \
+--        -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
