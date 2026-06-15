@@ -55,6 +55,7 @@ def save_session(cl: Client, user_id: str):
 
 def run_session(user_id: str, ig_username: str, ig_password: str, interests: list) -> dict:
     cl = Client()
+    cl.set_proxy("http://tmpcpzzl:b88dexouv37s@38.154.203.95:5863/")
     cl.delay_range = [2, 5]  # human-like delays between requests
     actions = []
 
