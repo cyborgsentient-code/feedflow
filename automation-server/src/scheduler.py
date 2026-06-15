@@ -34,7 +34,7 @@ def get_user_data(user_id: str):
     conn = conn_res.data
 
     profile_res = supabase.table("profiles") \
-        .select("interests").eq("id", user_id).single().execute()
+        .select("interests").eq("id", user_id).maybe_single().execute()
     interests = (profile_res.data or {}).get("interests") or []
 
     if not interests:
