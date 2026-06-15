@@ -1,0 +1,4 @@
+instagrapi==2.1.2
+flask==3.0.3
+supabase==2.4.6
+apscheduler==3.10.4
