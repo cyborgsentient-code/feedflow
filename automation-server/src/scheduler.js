@@ -82,6 +82,7 @@ async function runAutomationForUser(userId) {
     await logAction(userId, "reinforcement_calculated", {
       actions_count: result.actions.length,
       success: result.success,
+      error: result.error ?? null,
     });
 
     console.log(`[${userId}] Session complete — ${result.actions.length} actions`);

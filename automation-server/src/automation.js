@@ -67,6 +67,21 @@ async function runSession(userId, igUsername, igPassword, interests) {
       await page.waitForTimeout(1000);
     }
 
+    // ── Verify login succeeded ───────────────────────────────────────────────
+    const currentUrl = page.url();
+    const pageText = await page.textContent("body").catch(() => "");
+    const loginFailed =
+      currentUrl.includes("/accounts/login") ||
+      currentUrl.includes("/challenge") ||
+      currentUrl.includes("/two_factor") ||
+      pageText.includes("your password was incorrect") ||
+      pageText.includes("verify your identity") ||
+      pageText.includes("suspicious login");
+
+    if (loginFailed) {
+      return { success: false, error: `Login failed. URL: ${currentUrl}`, actions };
+    }
+
     // ── For each interest, explore hashtag ───────────────────────────────────
     const activeInterests = interests.filter((s) => INTEREST_HASHTAGS[s]);
 
