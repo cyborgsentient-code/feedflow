@@ -33,9 +33,13 @@ def get_user_data(user_id: str):
         .eq("user_id", user_id).single().execute()
     conn = conn_res.data
 
-    profile_res = supabase.table("profiles") \
-        .select("interests").eq("id", user_id).maybe_single().execute()
-    interests = (profile_res.data or {}).get("interests") or []
+    interests = []
+    try:
+        profile_res = supabase.table("profiles") \
+            .select("interests").eq("id", user_id).single().execute()
+        interests = (profile_res.data or {}).get("interests") or []
+    except Exception:
+        pass
 
     if not interests:
         prefs_res = supabase.table("user_preferences") \
