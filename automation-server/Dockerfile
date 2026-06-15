@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 RUN npx playwright install chromium
 
 COPY src ./src
