@@ -50,10 +50,20 @@ async function runSession(userId, igUsername, igPassword, interests) {
       await page.waitForTimeout(1000);
     }
 
+    console.log(`[${userId}] Filling login form...`);
+    try {
+      await page.waitForSelector('input[name="username"]', { timeout: 15000 });
+    } catch (e) {
+      const html = await page.content();
+      console.log(`[${userId}] Username input not found. Page HTML snippet: ${html.slice(0, 500)}`);
+      return { success: false, error: "Login form not found", actions };
+    }
     await page.fill('input[name="username"]', igUsername);
     await page.fill('input[name="password"]', igPassword);
     await page.click('button[type="submit"]');
-    await page.waitForTimeout(4000);
+    console.log(`[${userId}] Submitted login form, waiting...`);
+    await page.waitForTimeout(5000);
+    console.log(`[${userId}] Post-submit URL: ${page.url()}`);
 
     // Dismiss "Save login info" dialog if it appears
     const notNow = page.locator("text=Not now").first();
