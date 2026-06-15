@@ -1,6 +1,6 @@
 const { IgApiClient } = require("instagram-private-api");
+const { supabase } = require("./supabase");
 
-// Hashtags mapped to interest slugs
 const INTEREST_HASHTAGS = {
   technology:  ["technology", "tech", "coding", "programming", "software"],
   design:      ["design", "uidesign", "uxdesign", "graphicdesign", "creative"],
@@ -20,10 +20,28 @@ async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/**
- * Run one automation session for a user via Instagram private API.
- * Logs in, browses hashtag feeds, and likes posts to signal interest.
- */
+async function loadSession(ig, userId) {
+  const { data } = await supabase
+    .from("instagram_connections")
+    .select("session_data")
+    .eq("user_id", userId)
+    .single();
+  if (data?.session_data) {
+    await ig.state.deserialize(data.session_data);
+    return true;
+  }
+  return false;
+}
+
+async function saveSession(ig, userId) {
+  const serialized = await ig.state.serialize();
+  delete serialized.constants; // don't store constants
+  await supabase
+    .from("instagram_connections")
+    .update({ session_data: serialized, updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
+}
+
 async function runSession(userId, igUsername, igPassword, interests) {
   const ig = new IgApiClient();
   ig.state.generateDevice(igUsername);
@@ -31,13 +49,20 @@ async function runSession(userId, igUsername, igPassword, interests) {
   const actions = [];
 
   try {
-    console.log(`[${userId}] Logging in as ${igUsername}...`);
-    await ig.simulate.preLoginFlow();
-    await sleep(2000);
-    const loggedInUser = await ig.account.login(igUsername, igPassword);
-    await sleep(2000);
-    await ig.simulate.postLoginFlow();
-    console.log(`[${userId}] Login successful as ${loggedInUser.username}`);
+    const hasSession = await loadSession(ig, userId);
+
+    if (hasSession) {
+      console.log(`[${userId}] Resuming saved session for ${igUsername}`);
+    } else {
+      console.log(`[${userId}] No saved session, logging in as ${igUsername}...`);
+      await ig.simulate.preLoginFlow();
+      await sleep(2000);
+      const loggedInUser = await ig.account.login(igUsername, igPassword);
+      await sleep(2000);
+      await ig.simulate.postLoginFlow();
+      console.log(`[${userId}] Login successful as ${loggedInUser.username}`);
+      await saveSession(ig, userId);
+    }
 
     const activeInterests = interests.filter((s) => INTEREST_HASHTAGS[s]);
 
@@ -52,13 +77,12 @@ async function runSession(userId, igUsername, igPassword, interests) {
 
         actions.push({ type: "search", payload: { topic: slug, tag: hashtag } });
 
-        // Like up to 2 posts per hashtag
         for (const post of posts.slice(0, 2)) {
           if (!post.has_liked) {
             await ig.media.like({ mediaId: post.id, moduleInfo: { module_name: "hashtag_feed" } });
             actions.push({ type: "like", payload: { topic: slug, tag: hashtag, mediaId: post.id } });
             console.log(`[${userId}] Liked post ${post.id} (#${hashtag})`);
-            await sleep(3000 + Math.random() * 2000); // human-like delay
+            await sleep(3000 + Math.random() * 2000);
           }
           actions.push({ type: "view", payload: { topic: slug, tag: hashtag, mediaId: post.id } });
         }
@@ -70,12 +94,18 @@ async function runSession(userId, igUsername, igPassword, interests) {
       }
     }
 
+    // Save updated session after successful run
+    await saveSession(ig, userId);
     return { success: true, actions };
 
   } catch (err) {
     console.error(`[${userId}] Session error:`, err.message);
-    if (err.name === 'IgCheckpointError') {
-      console.error(`[${userId}] Checkpoint/challenge required — manual verification needed`);
+    // Clear bad session so next run attempts fresh login
+    if (err.message.includes("400") || err.name === "IgCheckpointError") {
+      await supabase
+        .from("instagram_connections")
+        .update({ session_data: null, updated_at: new Date().toISOString() })
+        .eq("user_id", userId);
     }
     return { success: false, error: err.message, actions };
   }
