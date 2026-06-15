@@ -38,8 +38,10 @@ async function runSession(userId, igUsername, igPassword, interests) {
 
   try {
     // ── Login ────────────────────────────────────────────────────────────────
-    await page.goto("https://www.instagram.com/accounts/login/", { waitUntil: "networkidle" });
-    await page.waitForTimeout(2000);
+    console.log(`[${userId}] Navigating to Instagram login...`);
+    await page.goto("https://www.instagram.com/accounts/login/", { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForTimeout(3000);
+    console.log(`[${userId}] Login page loaded: ${page.url()}`);
 
     // Accept cookies if prompted
     const cookieBtn = page.locator("text=Allow all cookies").first();
@@ -94,7 +96,7 @@ async function runSession(userId, igUsername, igPassword, interests) {
 
       try {
         await page.goto(`https://www.instagram.com/explore/tags/${hashtag}/`, {
-          waitUntil: "networkidle",
+          waitUntil: "domcontentloaded",
           timeout: 15000,
         });
         await page.waitForTimeout(2000);
