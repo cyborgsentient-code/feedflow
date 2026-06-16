@@ -54,7 +54,7 @@ def connect():
         "user_id": user_id,
         "instagram_username": username,
         "access_token": password,
-        "status": "connecting",
+        "status": "connected",
         "session_data": None,
         "updated_at": "now()",
     }, on_conflict="user_id").execute()

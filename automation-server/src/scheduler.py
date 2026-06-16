@@ -6,14 +6,17 @@ logger = logging.getLogger(__name__)
 running_sessions = set()
 
 
-def log_action(user_id: str, action_type: str, payload: dict):
+def log_action(user_id: str, action_type: str, payload: dict, category_slug: str | None = None):
     try:
-        supabase.table("automation_logs").insert({
+        row = {
             "user_id": user_id,
             "action_type": action_type,
             "metadata": payload,
             "source": "railway-automation-server",
-        }).execute()
+        }
+        if category_slug:
+            row["category_slug"] = category_slug
+        supabase.table("automation_logs").insert(row).execute()
     except Exception as e:
         logger.error(f"logAction: {e}")
 
@@ -79,7 +82,7 @@ def run_automation_for_user(user_id: str):
         result = run_session(user_id, conn["instagram_username"], conn["access_token"], interests)
 
         for action in result["actions"]:
-            log_action(user_id, action["type"], action["payload"])
+            log_action(user_id, action["type"], action["payload"], action.get("category_slug"))
 
         update_connection_status(user_id, "connected" if result["success"] else "failed")
         log_action(user_id, "reinforcement_calculated", {
