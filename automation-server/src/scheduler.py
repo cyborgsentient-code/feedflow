@@ -76,7 +76,6 @@ def run_automation_for_user(user_id: str):
             return
 
         logger.info(f"[{user_id}] Interests: {', '.join(interests)}")
-        update_connection_status(user_id, "connecting")
         log_action(user_id, "snapshot_created", {"message": "Automation session started"})
 
         result = run_session(user_id, conn["instagram_username"], conn["access_token"], interests)
