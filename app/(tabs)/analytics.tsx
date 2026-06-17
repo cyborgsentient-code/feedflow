@@ -65,16 +65,12 @@ async function fetchTopCategories(userId: string): Promise<{ slug: string; count
 }
 
 async function fetchReinforcementScore(userId: string): Promise<number> {
-  const { data } = await supabase
-    .from("reinforcement_scores")
-    .select("total_score, actions_total")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!data) return 0;
-  return Math.min(100, Math.round(
-    (data.total_score / Math.max(1, data.actions_total)) * 10 +
-    Math.min(data.actions_total * 0.5, 80)
-  ));
+  const { count } = await supabase
+    .from("automation_logs")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+  const total = count ?? 0;
+  return Math.min(100, Math.round(Math.sqrt(total) * 4.5));
 }
 
 // ── Realtime invalidation hook ────────────────────────────────────────────────

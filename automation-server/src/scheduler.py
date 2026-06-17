@@ -78,19 +78,15 @@ def run_automation_for_user(user_id: str):
         logger.info(f"[{user_id}] Interests: {', '.join(interests)}")
         log_action(user_id, "snapshot_created", {"message": "Automation session started"})
 
-        result = run_session(user_id, conn["instagram_username"], conn["access_token"], interests)
-
-        for action in result["actions"]:
-            log_action(user_id, action["type"], action["payload"], action.get("category_slug"))
+        result = run_session(user_id, conn["instagram_username"], conn["access_token"], interests, log_action)
 
         update_connection_status(user_id, "connected" if result["success"] else "failed")
         log_action(user_id, "reinforcement_calculated", {
-            "actions_count": len(result["actions"]),
+            "actions_count": result.get("actions_count", 0),
             "success": result["success"],
-            "error": result.get("error"),
         })
 
-        logger.info(f"[{user_id}] Session complete — {len(result['actions'])} actions")
+        logger.info(f"[{user_id}] Session complete — {result.get('actions_count', 0)} actions")
 
     except Exception as e:
         logger.error(f"[{user_id}] Session error: {e}")
