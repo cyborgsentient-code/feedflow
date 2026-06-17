@@ -23,7 +23,7 @@ const keyExtractor = (item: AutomationEvent) => item.id;
 
 const SectionHeader = memo(function SectionHeader() {
   return (
-    <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.sm }}>
+    <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xs }}>
       <Text size="sm" weight="semibold" color="3">YOUR FEED ACTIVITY</Text>
     </View>
   );
@@ -75,7 +75,7 @@ export default function DashboardScreen() {
         maxToRenderPerBatch={20}
         windowSize={10}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={events.length === 0 && !isConnecting ? { flex: 1 } : undefined}
+        contentContainerStyle={events.length === 0 && !isConnecting ? { flex: 1 } : { paddingBottom: spacing.lg }}
       />
     </SafeAreaView>
   );
