@@ -10,16 +10,21 @@ export default function Index() {
 
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["profile", session?.user.id],
-    queryFn: () => profileService.getOnboardingStatus(session!.user.id),
+    queryFn: async () => {
+      try {
+        return await profileService.getOnboardingStatus(session!.user.id);
+      } catch {
+        return { onboarding_complete: false };
+      }
+    },
     enabled: !!session,
     staleTime: Infinity,
+    retry: false,
   });
 
-  // Fire-and-forget bootstrap: guarantees demo state before dashboard loads.
-  // Runs only when user has completed onboarding.
   useEffect(() => {
     if (session?.user.id && profile?.onboarding_complete) {
-      journeyService.bootstrap(session.user.id);
+      journeyService.bootstrap(session.user.id).catch(() => {});
     }
   }, [session?.user.id, profile?.onboarding_complete]);
 
