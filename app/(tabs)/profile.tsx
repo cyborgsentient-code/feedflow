@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { profileService } from "@/services/profileService";
@@ -304,7 +305,11 @@ export default function ProfileScreen() {
         {/* Session */}
         <View style={{ gap: spacing.sm }}>
           <Text size="xs" weight="semibold" color="3" style={{ paddingHorizontal: spacing.xs }}>SESSION</Text>
-          <Button label="Sign Out" variant="danger" size="lg" fullWidth onPress={signOut} accessibilityRole="button" />
+          <Button
+            label="Sign Out" variant="danger" size="lg" fullWidth
+            onPress={async () => { await signOut(); router.replace("/sign-in"); }}
+            accessibilityRole="button"
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
