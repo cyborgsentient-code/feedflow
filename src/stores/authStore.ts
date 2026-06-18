@@ -19,7 +19,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   sessionKey: 0,
 
   setSession: (session) =>
-    set({ session, user: session?.user ?? null, isLoading: false }),
+    set((s) => ({
+      session,
+      user: session?.user ?? null,
+      isLoading: false,
+      // bump on every new sign-in so hooks that depend on sessionKey re-run
+      sessionKey: session?.user && session.user.id !== s.user?.id ? s.sessionKey + 1 : s.sessionKey,
+    })),
 
   signOut: async () => {
     await authService.signOut();

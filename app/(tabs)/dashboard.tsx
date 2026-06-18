@@ -30,8 +30,8 @@ const SectionHeader = memo(function SectionHeader() {
 });
 
 export default function DashboardScreen() {
-  const { user } = useAuthStore();
-  const { events, snapshot } = useAutomationStream(user?.id);
+  const { user, sessionKey } = useAuthStore();
+  const { events, snapshot } = useAutomationStream(user?.id, sessionKey);
 
   const isConnecting = snapshot.recoveryState === "degraded" && snapshot.eventCount === 0;
 

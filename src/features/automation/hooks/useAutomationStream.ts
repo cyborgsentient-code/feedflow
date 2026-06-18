@@ -141,7 +141,7 @@ export type UseAutomationStreamResult = {
   snapshot: StreamSnapshot;
 };
 
-export function useAutomationStream(userId: string | undefined): UseAutomationStreamResult {
+export function useAutomationStream(userId: string | undefined, sessionKey = 0): UseAutomationStreamResult {
   const [events, setEvents] = useState<AutomationEvent[]>([]);
   const [lifecycle, setLifecycle] = useState<LifecycleState>("idle");
   const [reconnectCount, setReconnectCount] = useState(0);
@@ -358,14 +358,39 @@ export function useAutomationStream(userId: string | undefined): UseAutomationSt
   useEffect(() => {
     if (!userId) { transition("idle"); return; }
 
-    // Reset reconnect state for fresh subscription on userId change
+    // Full reset for fresh subscription
     reconnectRef.current = 0;
     stormCooldownUntil.current = 0;
     reconnectTimes.current = [];
+    seenKeys.current.clear();
+    lastSeq.current = null;
+    pendingBatch.current = [];
     setFailure(null);
     setGapDetected(false);
+    setReplayWindow(null);
+    setEvents([]);
+    setReconnectCount(0);
 
-    // Hydrate lastSeq from DB, then subscribe — prevents missed events on restart
+    // Load existing events from DB first
+    supabase
+      .from("automation_logs")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        const loaded: AutomationEvent[] = [];
+        for (const row of data ?? []) {
+          const e = normalizeEvent(row as Record<string, unknown>);
+          if (e && !seenKeys.current.has(e.id)) {
+            seenKeys.current.add(e.id);
+            loaded.push(e);
+          }
+        }
+        if (loaded.length > 0) setEvents(loaded);
+      });
+
+    // Then subscribe for realtime updates
     fetchLastSequence(userId).then(() => openChannel(userId));
 
     return () => {
@@ -373,7 +398,7 @@ export function useAutomationStream(userId: string | undefined): UseAutomationSt
       if (batchTimer.current) { clearTimeout(batchTimer.current); flushBatch(); }
       removeChannel();
     };
-  }, [userId]);
+  }, [userId, sessionKey]);
 
   const recoveryState = deriveRecoveryState(lifecycle, gapDetected, replayWindow, failure);
   const displayEvents = useMemo(() => [...events].reverse(), [events]);
