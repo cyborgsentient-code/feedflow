@@ -4,7 +4,6 @@ import {
   ScrollView,
   Pressable,
   Dimensions,
-  Animated,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from "react-native";
@@ -59,18 +58,14 @@ function Dot({ active, color }: { active: boolean; color: string }) {
 export default function OnboardingWelcome() {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
-  const scrollX = useRef(new Animated.Value(0)).current;
 
   const isLast = activeIndex === SLIDES.length - 1;
 
-  const handleScroll = useCallback(
-    Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
-      useNativeDriver: false,
-      listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-        setActiveIndex(index);
-      },
-    }),
+  const handleMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+      setActiveIndex(index);
+    },
     [],
   );
 
@@ -106,7 +101,7 @@ export default function OnboardingWelcome() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
         scrollEventThrottle={16}
         style={{ flex: 1 }}
       >
