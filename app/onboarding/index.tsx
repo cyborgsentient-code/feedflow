@@ -4,6 +4,7 @@ import {
   ScrollView,
   Pressable,
   Dimensions,
+  Text as RNText,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from "react-native";
@@ -127,14 +128,14 @@ export default function OnboardingWelcome() {
                 borderColor: `${slide.accent}30`,
                 alignItems: "center",
                 justifyContent: "center",
-                // outer glow via shadow
+                overflow: "visible",
                 shadowColor: slide.accent,
                 shadowOpacity: 0.35,
                 shadowRadius: 32,
                 shadowOffset: { width: 0, height: 0 },
                 elevation: 12,
               }}>
-                <Text style={{ fontSize: 52 }}>{slide.emoji}</Text>
+                <RNText style={{ fontSize: 52, lineHeight: 64 }}>{slide.emoji}</RNText>
               </View>
             </View>
 
