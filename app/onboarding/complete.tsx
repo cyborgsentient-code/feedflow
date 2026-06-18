@@ -24,7 +24,7 @@ export default function OnboardingComplete() {
     setErrorMsg(null);
 
     try {
-      await profileWriteService.updateProfile(user.id, { interests: draft.interests });
+      await profileWriteService.updateProfile(user.id, { interests: draft.interests, disinterests: draft.disinterests });
       await profileWriteService.saveInterestPreferences(user.id, draft.interests);
       const confirmed = await onboardingService.markComplete(user.id);
 

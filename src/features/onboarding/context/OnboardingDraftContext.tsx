@@ -2,14 +2,16 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 
 export type OnboardingDraft = {
   interests: string[];
+  disinterests: string[];
   preferences: Record<string, boolean>;
 };
 
-const EMPTY: OnboardingDraft = { interests: [], preferences: {} };
+const EMPTY: OnboardingDraft = { interests: [], disinterests: [], preferences: {} };
 
 type OnboardingDraftContext = {
   draft: OnboardingDraft;
   setInterests: (interests: string[]) => void;
+  setDisinterests: (disinterests: string[]) => void;
   setPreference: (key: string, value: boolean) => void;
   reset: () => void;
 };
@@ -22,8 +24,9 @@ export function OnboardingDraftProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       draft,
-      setInterests: (interests) => setDraft((d) => ({ ...d, interests })),
-      setPreference: (key, value) => setDraft((d) => ({ ...d, preferences: { ...d.preferences, [key]: value } })),
+      setInterests:    (interests)    => setDraft((d) => ({ ...d, interests })),
+      setDisinterests: (disinterests) => setDraft((d) => ({ ...d, disinterests })),
+      setPreference:   (key, value)   => setDraft((d) => ({ ...d, preferences: { ...d.preferences, [key]: value } })),
       reset: () => setDraft(EMPTY),
     }}>
       {children}

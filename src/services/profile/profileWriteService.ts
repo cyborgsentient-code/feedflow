@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 /** Write-only profile mutations. Never reads realtime streams. */
 export const profileWriteService = {
-  async updateProfile(userId: string, updates: { interests?: string[]; display_name?: string }) {
+  async updateProfile(userId: string, updates: { interests?: string[]; disinterests?: string[]; display_name?: string }) {
     const { error } = await supabase
       .from("profiles")
       .update({ ...updates, updated_at: new Date().toISOString() })

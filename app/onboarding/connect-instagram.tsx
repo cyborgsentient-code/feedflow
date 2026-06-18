@@ -13,34 +13,42 @@ import type { ConnectionStatus } from "@/types/database";
 const AUTOMATION_SERVER = process.env.EXPO_PUBLIC_AUTOMATION_SERVER_URL!;
 const API_SECRET = process.env.EXPO_PUBLIC_AUTOMATION_API_SECRET!;
 
+function formatSync(iso: string | null): string {
+  if (!iso) return "Never";
+  const d = new Date(iso);
+  const diff = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diff < 1)  return "Just now";
+  if (diff < 60) return `${diff}m ago`;
+  if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 export default function ConnectInstagram() {
   const { user } = useAuthStore();
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [username, setUsername] = useState<string | null>(null);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Form state
   const [igUsername, setIgUsername] = useState("");
   const [igPassword, setIgPassword] = useState("");
-  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("instagram_connections")
-      .select("status, instagram_username")
+      .select("status, instagram_username, updated_at")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setStatus(data.status as ConnectionStatus);
           setUsername(data.instagram_username);
+          setLastSync(data.updated_at ?? null);
         }
         setLoading(false);
       });
 
-    // Realtime updates from automation server
     const channel = supabase
       .channel(`ig:${user.id}`)
       .on("postgres_changes", {
@@ -50,6 +58,7 @@ export default function ConnectInstagram() {
       }, (payload: any) => {
         setStatus(payload.new.status);
         setUsername(payload.new.instagram_username);
+        setLastSync(payload.new.updated_at ?? null);
       })
       .subscribe();
 
@@ -65,26 +74,17 @@ export default function ConnectInstagram() {
     setStatus("connecting");
 
     try {
-      const url = `${AUTOMATION_SERVER}/connect`;
-      console.log("[connect] POST", url);
-      const res = await fetch(url, {
+      const res = await fetch(`${AUTOMATION_SERVER}/connect`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-secret": API_SECRET,
-        },
+        headers: { "Content-Type": "application/json", "x-api-secret": API_SECRET },
         body: JSON.stringify({
           userId: user.id,
           username: igUsername.trim().toLowerCase(),
           password: igPassword,
         }),
       });
-
-      console.log("[connect] status", res.status);
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      setShowForm(false);
     } catch (e) {
-      console.error("[connect] error:", e instanceof Error ? e.message : e);
       setStatus("failed");
       setError(e instanceof Error ? e.message : "Connection failed.");
     }
@@ -125,31 +125,36 @@ export default function ConnectInstagram() {
 
         {/* Status card */}
         <Card variant="bordered" padding="lg">
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            {isConnecting
-              ? <ActivityIndicator size="small" color={colors.primary} />
-              : <View style={{
-                  width: 10, height: 10, borderRadius: radius.full,
-                  backgroundColor:
-                    isConnected ? colors.success :
-                    status === "failed" ? colors.error : colors.text3,
-                }} />
-            }
-            <View style={{ flex: 1 }}>
-              <Text size="sm" weight="semibold">
-                {status === "disconnected" && "Not connected"}
-                {status === "connecting"   && "Connecting to Instagram…"}
-                {status === "connected"    && (username ? `@${username}` : "Instagram connected")}
-                {status === "failed"       && "Connection failed"}
-              </Text>
-              {error && <Text size="xs" color="error">{error}</Text>}
+          <View style={{ gap: spacing.md }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+              {isConnecting
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <View style={{
+                    width: 10, height: 10, borderRadius: radius.full,
+                    backgroundColor: isConnected ? colors.success : status === "failed" ? colors.error : colors.text3,
+                  }} />
+              }
+              <View style={{ flex: 1 }}>
+                <Text size="sm" weight="semibold">
+                  {status === "disconnected" && "Not connected"}
+                  {status === "connecting"   && "Connecting to Instagram…"}
+                  {status === "connected"    && (username ? `@${username}` : "Connected")}
+                  {status === "failed"       && "Connection failed"}
+                </Text>
+                {error && <Text size="xs" color="error">{error}</Text>}
+              </View>
+              {isConnected && <Text size="lg">✅</Text>}
             </View>
-            {isConnected && <Text size="lg">✅</Text>}
+            {/* Last sync */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text size="xs" color="3">Last sync</Text>
+              <Text size="xs" color="2" weight="medium">{formatSync(lastSync)}</Text>
+            </View>
           </View>
         </Card>
 
         {/* Credential form */}
-        {(showForm || (!isConnected && !isConnecting)) && !isConnected && (
+        {!isConnected && !isConnecting && (
           <View style={{ gap: spacing.md }}>
             <TextInput
               placeholder="Instagram username"
@@ -194,29 +199,19 @@ export default function ConnectInstagram() {
           {!isConnected ? (
             <Button
               label={isConnecting ? "Connecting…" : status === "failed" ? "Retry Connection" : "Connect Instagram"}
-              size="lg"
-              fullWidth
-              disabled={isConnecting}
-              onPress={handleConnect}
-              accessibilityRole="button"
+              size="lg" fullWidth disabled={isConnecting}
+              onPress={handleConnect} accessibilityRole="button"
             />
           ) : (
             <Button
-              label="Continue"
-              size="lg"
-              fullWidth
-              onPress={() => router.push("/onboarding/preferences")}
-              accessibilityRole="button"
+              label="Continue" size="lg" fullWidth
+              onPress={() => router.push("/onboarding/preferences")} accessibilityRole="button"
             />
           )}
           {(status === "disconnected" || status === "failed") && (
             <Button
-              label="Skip for now"
-              variant="ghost"
-              size="lg"
-              fullWidth
-              onPress={() => router.push("/onboarding/preferences")}
-              accessibilityRole="button"
+              label="Skip for now" variant="ghost" size="lg" fullWidth
+              onPress={() => router.push("/onboarding/preferences")} accessibilityRole="button"
             />
           )}
         </View>
