@@ -26,12 +26,6 @@ export default function RootLayout() {
         splashHidden = true;
         SplashScreen.hideAsync();
       }
-      // Drive navigation on auth state changes after splash is hidden
-      if (splashHidden) {
-        if (!session) {
-          router.replace("/sign-in");
-        }
-      }
     });
 
     return unsubscribe;
