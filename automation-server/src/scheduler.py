@@ -110,7 +110,20 @@ def run_all_active_users():
         logger.info("[scheduler] No active users found")
         return
 
-    logger.info(f"[scheduler] Running automation for {len(connections)} users")
-    for row in connections:
+    # Filter out users who have paused automation
+    user_ids = [row["user_id"] for row in connections]
+    settings_res = supabase.table("user_settings") \
+        .select("user_id, automation_enabled") \
+        .in_("user_id", user_ids) \
+        .execute()
+    paused = {
+        row["user_id"]
+        for row in (settings_res.data or [])
+        if row.get("automation_enabled") is False
+    }
+
+    active = [row for row in connections if row["user_id"] not in paused]
+    logger.info(f"[scheduler] Running automation for {len(active)} users ({len(paused)} paused)")
+    for row in active:
         run_automation_for_user(row["user_id"])
         import time; time.sleep(5)
