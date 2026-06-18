@@ -73,6 +73,28 @@ async function fetchReinforcementScore(userId: string): Promise<number> {
   return Math.min(100, Math.round(Math.sqrt(total) * 4.5));
 }
 
+async function fetchLastActivity(userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("automation_logs")
+    .select("created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.created_at ?? null;
+}
+
+function formatLastActivity(iso: string | null): string {
+  if (!iso) return "No activity yet";
+  const diffS = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diffS < 60) return `${diffS}s ago`;
+  const diffM = Math.floor(diffS / 60);
+  if (diffM < 60) return `${diffM}m ago`;
+  const diffH = Math.floor(diffM / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 // ── Realtime invalidation hook ────────────────────────────────────────────────
 // Single channel subscription — invalidates all analytics keys on any
 // automation_logs INSERT for this user. No polling needed.
@@ -93,6 +115,7 @@ function useAnalyticsRealtime(userId: string | undefined) {
           qc.invalidateQueries({ queryKey: ["daily_trend", userId] });
           qc.invalidateQueries({ queryKey: ["top_categories", userId] });
           qc.invalidateQueries({ queryKey: ["reinforcement_score", userId] });
+          qc.invalidateQueries({ queryKey: ["last_activity", userId] });
         },
       )
       .on(
@@ -140,6 +163,12 @@ export default function AnalyticsScreen() {
   const { data: score = 0 } = useQuery({
     queryKey: ["reinforcement_score", user?.id],
     queryFn:  () => fetchReinforcementScore(user!.id),
+    enabled:  !!user,
+  });
+
+  const { data: lastActivity = null } = useQuery({
+    queryKey: ["last_activity", user?.id],
+    queryFn:  () => fetchLastActivity(user!.id),
     enabled:  !!user,
   });
 
@@ -192,6 +221,11 @@ export default function AnalyticsScreen() {
                    score < 70  ? "Good progress — feed is improving" :
                                  "Excellent — your feed is highly personalised"}
                 </Text>
+                <View style={{ height: 1, backgroundColor: colors.border, width: "100%" }} />
+                <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%" }}>
+                  <Text size="xs" color="3">Last activity</Text>
+                  <Text size="xs" weight="medium">{formatLastActivity(lastActivity)}</Text>
+                </View>
               </View>
             </Card>
 

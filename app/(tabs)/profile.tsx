@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { profileService } from "@/services/profileService";
 import { profileWriteService } from "@/services/profile/profileWriteService";
+import { userSettingsService } from "@/services/userSettingsService";
 import { supabase } from "@/lib/supabase";
 import { Text } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
@@ -144,6 +145,13 @@ export default function ProfileScreen() {
     },
   });
 
+  const { data: settings } = useQuery({
+    queryKey: ["user_settings", user?.id],
+    queryFn:  () => userSettingsService.getOrCreate(user!.id),
+    enabled:  !!user,
+    staleTime: 30_000,
+  });
+
   const initials = (user?.email?.slice(0, 2) ?? "??").toUpperCase();
   const memberSince = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString([], { month: "long", year: "numeric" })
@@ -212,6 +220,25 @@ export default function ProfileScreen() {
                 label="Status"
                 value={igConn?.status === "connected" ? "Connected" : igConn?.status ?? "Disconnected"}
                 valueColor={igConn?.status === "connected" ? "success" : "warning"}
+              />
+            </View>
+          </Card>
+        </View>
+
+        {/* Automation */}
+        <View style={{ gap: spacing.sm }}>
+          <Text size="xs" weight="semibold" color="3" style={{ paddingHorizontal: spacing.xs }}>AUTOMATION</Text>
+          <Card variant="bordered" padding="lg">
+            <View style={{ gap: spacing.md }}>
+              <Row
+                label="Status"
+                value={settings?.automation_enabled !== false ? "Active" : "Paused"}
+                valueColor={settings?.automation_enabled !== false ? "success" : "warning"}
+              />
+              <Divider />
+              <Row
+                label="Control"
+                value="Dashboard → Feed Personalization toggle"
               />
             </View>
           </Card>
