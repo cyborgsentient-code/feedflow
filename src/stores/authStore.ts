@@ -19,13 +19,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   sessionKey: 0,
 
   setSession: (session) =>
-    set((s) => ({
-      session,
-      user: session?.user ?? null,
-      isLoading: false,
-      // Increment key on new sign-in to force remount of stream hooks
-      sessionKey: session && session.user.id !== s.session?.user.id ? s.sessionKey + 1 : s.sessionKey,
-    })),
+    set({ session, user: session?.user ?? null, isLoading: false }),
 
   signOut: async () => {
     await authService.signOut();
