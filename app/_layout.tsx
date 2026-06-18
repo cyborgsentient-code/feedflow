@@ -30,7 +30,6 @@ export default function RootLayout() {
 
       if (event === "SIGNED_IN" && session) {
         lastSignInAt.current = Date.now();
-        useAuthStore.setState((s) => ({ sessionKey: s.sessionKey + 1 }));
         try {
           const profile = await profileService.getOnboardingStatus(session.user.id);
           console.log("[_layout] profile onboarding_complete:", profile.onboarding_complete);

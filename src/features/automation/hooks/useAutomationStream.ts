@@ -155,13 +155,12 @@ export function useAutomationStream(userId: string | undefined, sessionKey = 0):
   const reconnectRef      = useRef(0);
   const backoffTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const replayInFlight    = useRef<number | null>(null);
-  // Backpressure: pending batch buffer + flush timer
   const pendingBatch      = useRef<AutomationEvent[]>([]);
   const batchTimer        = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Reconnect storm detection: timestamps of recent reconnect attempts
   const reconnectTimes    = useRef<number[]>([]);
-  // Storm cooldown: when set, reconnects are blocked until this time
   const stormCooldownUntil = useRef<number>(0);
+  // Guards stale callbacks from a previous effect run
+  const aliveRef          = useRef(false);
 
   function transition(sig: LifecycleState) {
     setLifecycle((cur) => nextLifecycle(cur, sig));
@@ -274,6 +273,7 @@ export function useAutomationStream(userId: string | undefined, sessionKey = 0):
   }
 
   function handleReconnect(uid: string) {
+    if (!aliveRef.current) return;
     removeChannel();
 
     if (isStormDetected()) {
@@ -300,6 +300,7 @@ export function useAutomationStream(userId: string | undefined, sessionKey = 0):
 
   // ─── Single event ingest with backpressure batching ───────────────────────
   function ingestEvent(raw: Record<string, unknown>, uid: string) {
+    if (!aliveRef.current) return;
     const event = normalizeEvent(raw);
     if (!event) return;
     if (seenKeys.current.has(event.id)) return;
@@ -337,6 +338,7 @@ export function useAutomationStream(userId: string | undefined, sessionKey = 0):
         (payload) => ingestEvent(payload.new as Record<string, unknown>, uid),
       )
       .subscribe((s) => {
+        if (!aliveRef.current) return;
         if (s === "SUBSCRIBED") {
           reconnectRef.current = 0;
           setReconnectCount(0);
@@ -358,6 +360,8 @@ export function useAutomationStream(userId: string | undefined, sessionKey = 0):
   useEffect(() => {
     if (!userId) { transition("idle"); return; }
 
+    aliveRef.current = true;
+
     // Full reset for fresh subscription
     reconnectRef.current = 0;
     stormCooldownUntil.current = 0;
@@ -365,6 +369,7 @@ export function useAutomationStream(userId: string | undefined, sessionKey = 0):
     seenKeys.current.clear();
     lastSeq.current = null;
     pendingBatch.current = [];
+    setLifecycle("idle");
     setFailure(null);
     setGapDetected(false);
     setReplayWindow(null);
@@ -394,6 +399,7 @@ export function useAutomationStream(userId: string | undefined, sessionKey = 0):
     fetchLastSequence(userId).then(() => openChannel(userId));
 
     return () => {
+      aliveRef.current = false;
       if (backoffTimer.current) clearTimeout(backoffTimer.current);
       if (batchTimer.current) { clearTimeout(batchTimer.current); flushBatch(); }
       removeChannel();
