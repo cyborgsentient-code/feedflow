@@ -28,7 +28,11 @@ export const HeroCard = memo(function HeroCard({ snapshot, totalEvents }: HeroCa
 
   const { data: settings } = useQuery({
     queryKey: ["user_settings", user?.id],
-    queryFn: () => userSettingsService.getOrCreate(user!.id),
+    queryFn: async () => {
+      const result = await userSettingsService.getOrCreate(user!.id);
+      console.log(`[HeroCard] settings loaded — automation_enabled: ${result.automation_enabled}`);
+      return result;
+    },
     enabled: !!user,
     staleTime: 30_000,
   });
@@ -36,13 +40,21 @@ export const HeroCard = memo(function HeroCard({ snapshot, totalEvents }: HeroCa
   const automationOn = settings?.automation_enabled ?? true;
 
   const { mutate: toggle, isPending } = useMutation({
-    mutationFn: (enabled: boolean) => userSettingsService.setAutomationEnabled(user!.id, enabled),
+    mutationFn: (enabled: boolean) => {
+      console.log(`[HeroCard] toggle automation → ${enabled}`);
+      return userSettingsService.setAutomationEnabled(user!.id, enabled);
+    },
     onMutate: async (enabled) => {
-      // Optimistic update
       await qc.cancelQueries({ queryKey: ["user_settings", user?.id] });
       qc.setQueryData(["user_settings", user?.id], (old: typeof settings) =>
         old ? { ...old, automation_enabled: enabled } : old,
       );
+    },
+    onSuccess: (_, enabled) => {
+      console.log(`[HeroCard] toggle success — automation_enabled: ${enabled}`);
+    },
+    onError: (err, enabled) => {
+      console.error(`[HeroCard] toggle failed — tried to set ${enabled}:`, err);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["user_settings", user?.id] }),
   });
