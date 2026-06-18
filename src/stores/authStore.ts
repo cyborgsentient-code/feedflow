@@ -7,6 +7,7 @@ interface AuthState {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  sessionKey: number;
   setSession: (session: Session | null) => void;
   signOut: () => Promise<void>;
 }
@@ -15,9 +16,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   user: null,
   isLoading: true,
+  sessionKey: 0,
 
   setSession: (session) =>
-    set({ session, user: session?.user ?? null, isLoading: false }),
+    set((s) => ({
+      session,
+      user: session?.user ?? null,
+      isLoading: false,
+      // Increment key on new sign-in to force remount of stream hooks
+      sessionKey: session && session.user.id !== s.session?.user.id ? s.sessionKey + 1 : s.sessionKey,
+    })),
 
   signOut: async () => {
     await authService.signOut();

@@ -1,10 +1,14 @@
 import { Tabs } from "expo-router";
 import { LayoutDashboard, BarChart2, User } from "lucide-react-native";
 import { colors } from "@/constants/theme";
+import { useAuthStore } from "@/stores/authStore";
 
 export default function TabsLayout() {
+  const sessionKey = useAuthStore((s) => s.sessionKey);
+
   return (
     <Tabs
+      key={sessionKey}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
