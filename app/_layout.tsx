@@ -1,6 +1,6 @@
 import "../global.css";
 import React, { useEffect } from "react";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -25,6 +25,12 @@ export default function RootLayout() {
       if (!splashHidden) {
         splashHidden = true;
         SplashScreen.hideAsync();
+      }
+      // Drive navigation on auth state changes after splash is hidden
+      if (splashHidden) {
+        if (!session) {
+          router.replace("/sign-in");
+        }
       }
     });
 

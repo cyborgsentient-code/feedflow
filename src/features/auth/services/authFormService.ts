@@ -47,6 +47,8 @@ export async function signIn(email: string, password: string): Promise<AuthResul
   if (guard) return { success: false, error: guard };
 
   try {
+    // Sign out first to clear any stale session before signing in
+    await authService.signOut().catch(() => {});
     const { error } = await authService.signInWithEmail(email, password);
     if (error) return { success: false, error: mapError(error) };
     return { success: true, data: undefined };
