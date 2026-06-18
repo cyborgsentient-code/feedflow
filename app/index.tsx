@@ -27,7 +27,8 @@ export default function Index() {
     }
   }, [session?.user.id, profile?.onboarding_complete]);
 
-  if (isLoading || (session && profileLoading)) return null;
+  if (isLoading || (session && profileLoading)) { console.log("[index] waiting — isLoading:", isLoading, "profileLoading:", profileLoading); return null; }
+  console.log("[index] session:", session?.user?.id, "onboarding:", profile?.onboarding_complete);
   if (!session) return <Redirect href="/sign-in" />;
   if (!profile?.onboarding_complete) return <Redirect href="/onboarding" />;
   return <Redirect href="/(tabs)/dashboard" />;

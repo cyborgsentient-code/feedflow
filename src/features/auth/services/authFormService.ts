@@ -47,10 +47,13 @@ export async function signIn(email: string, password: string): Promise<AuthResul
   if (guard) return { success: false, error: guard };
 
   try {
-    const { error } = await authService.signInWithEmail(email, password);
+    console.log("[signIn] attempting with:", email);
+    const { data, error } = await authService.signInWithEmail(email, password);
+    console.log("[signIn] result — error:", JSON.stringify(error), "user:", data?.user?.id);
     if (error) return { success: false, error: mapError(error) };
     return { success: true, data: undefined };
   } catch (e: any) {
+    console.error("[signIn] exception:", e?.message ?? e);
     return { success: false, error: mapError(e) };
   }
 }
