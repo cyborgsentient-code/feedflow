@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Session, User } from "@supabase/supabase-js";
 import { authService } from "@/services/authService";
+import { queryClient } from "@/lib/queryClient";
 
 interface AuthState {
   session: Session | null;
@@ -20,6 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await authService.signOut();
+    queryClient.clear();
     set({ session: null, user: null, isLoading: false });
   },
 }));

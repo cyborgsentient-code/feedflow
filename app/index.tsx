@@ -18,7 +18,6 @@ export default function Index() {
       }
     },
     enabled: !!session,
-    staleTime: Infinity,
     retry: false,
   });
 
