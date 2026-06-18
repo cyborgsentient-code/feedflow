@@ -358,6 +358,13 @@ export function useAutomationStream(userId: string | undefined): UseAutomationSt
   useEffect(() => {
     if (!userId) { transition("idle"); return; }
 
+    // Reset reconnect state for fresh subscription on userId change
+    reconnectRef.current = 0;
+    stormCooldownUntil.current = 0;
+    reconnectTimes.current = [];
+    setFailure(null);
+    setGapDetected(false);
+
     // Hydrate lastSeq from DB, then subscribe — prevents missed events on restart
     fetchLastSequence(userId).then(() => openChannel(userId));
 
