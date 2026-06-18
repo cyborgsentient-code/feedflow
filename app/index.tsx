@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Redirect } from "expo-router";
+import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { profileService } from "@/services/profileService";
@@ -22,14 +22,16 @@ export default function Index() {
   });
 
   useEffect(() => {
-    if (session?.user.id && profile?.onboarding_complete) {
+    if (isLoading) return;
+    if (!session) { router.replace("/sign-in"); return; }
+    if (profileLoading) return;
+    if (profile?.onboarding_complete) {
       journeyService.bootstrap(session.user.id).catch(() => {});
+      router.replace("/(tabs)/dashboard");
+    } else {
+      router.replace("/onboarding");
     }
-  }, [session?.user.id, profile?.onboarding_complete]);
+  }, [isLoading, session?.user.id, profileLoading, profile?.onboarding_complete]);
 
-  if (isLoading || (session && profileLoading)) { console.log("[index] waiting — isLoading:", isLoading, "profileLoading:", profileLoading); return null; }
-  console.log("[index] session:", session?.user?.id, "onboarding:", profile?.onboarding_complete);
-  if (!session) return <Redirect href="/sign-in" />;
-  if (!profile?.onboarding_complete) return <Redirect href="/onboarding" />;
-  return <Redirect href="/(tabs)/dashboard" />;
+  return null;
 }
