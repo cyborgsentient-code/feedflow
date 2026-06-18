@@ -27,7 +27,7 @@ export default function RootLayout() {
         SplashScreen.hideAsync();
       }
 
-      if (event === "SIGNED_OUT") {
+      if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !session)) {
         // Ignore spurious SIGNED_OUT that Supabase fires when a new sign-in
         // invalidates the previous session token
         setTimeout(() => {
