@@ -22,7 +22,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0F"
       },
-      "package": "com.feedflow.app"
+      "package": "com.feedflow.app",
+      "usesCleartextTraffic": true
     },
     "plugins": [
       "expo-router",
